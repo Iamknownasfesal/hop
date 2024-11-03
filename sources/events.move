@@ -81,19 +81,19 @@ public(package) fun emit_buy<MemeCoin>(
         available_token_reserves,
     };
 
-    event::emit<BondingCurveBuy<MemeCoin>>(event);
+    event::emit(event);
 }
 
 public(package) fun emit_complete<MemeCoin>(curve_id: ID) {
     let event = BondingCurveComplete<MemeCoin> { curve_id };
 
-    event::emit<BondingCurveComplete<MemeCoin>>(event);
+    event::emit(event);
 }
 
 public(package) fun emit_connector_create<MemeCoin>(connector_id: ID) {
     let event = ConnectorCreated<MemeCoin> { connector_id };
 
-    event::emit<ConnectorCreated<MemeCoin>>(event);
+    event::emit(event);
 }
 
 public(package) fun emit_curve_create<MemeCoin>(
@@ -119,7 +119,7 @@ public(package) fun emit_curve_create<MemeCoin>(
         telegram,
     };
 
-    event::emit<BondingCurveCreated<MemeCoin>>(event);
+    event::emit(event);
 }
 
 public(package) fun emit_migrate<MemeCoin>(curve_id: ID, to_pool_id: ID) {
@@ -128,7 +128,7 @@ public(package) fun emit_migrate<MemeCoin>(curve_id: ID, to_pool_id: ID) {
         to_pool_id,
     };
 
-    event::emit<BondingCurveMigrate<MemeCoin>>(event);
+    event::emit(event);
 }
 
 public(package) fun emit_sell<MemeCoin>(
@@ -154,5 +154,5 @@ public(package) fun emit_sell<MemeCoin>(
         available_token_reserves,
     };
 
-    event::emit<BondingCurveSell<MemeCoin>>(event);
+    event::emit(event);
 }

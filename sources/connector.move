@@ -16,7 +16,7 @@ public struct Connector<phantom MemeCoin> has store, key {
 }
 
 public fun get_decimals<MemeCoin>(connector: &Connector<MemeCoin>): u8 {
-    coin::get_decimals<MemeCoin>(&connector.metadata)
+    coin::get_decimals(&connector.metadata)
 }
 
 public fun new<MemeCoin>(
@@ -29,7 +29,7 @@ public fun new<MemeCoin>(
     creator: address,
     ctx: &mut TxContext,
 ): Connector<MemeCoin> {
-    let connector = Connector<MemeCoin> {
+    let connector = Connector {
         id: object::new(ctx),
         temp_id,
         treasury_cap,
@@ -40,7 +40,7 @@ public fun new<MemeCoin>(
         creator,
     };
 
-    events::emit_connector_create<MemeCoin>(get_id<MemeCoin>(&connector));
+    events::emit_connector_create<MemeCoin>(get_id(&connector));
 
     connector
 }
@@ -78,7 +78,7 @@ public fun get_id<MemeCoin>(connector: &Connector<MemeCoin>): ID {
 }
 
 public fun get_supply<MemeCoin>(connector: &Connector<MemeCoin>): u64 {
-    coin::total_supply<MemeCoin>(&connector.treasury_cap)
+    coin::total_supply(&connector.treasury_cap)
 }
 
 public fun get_temp_id<MemeCoin>(connector: &Connector<MemeCoin>): u64 {
