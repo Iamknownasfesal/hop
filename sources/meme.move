@@ -3,7 +3,7 @@ module hop::meme;
 use hop::{connector, events, math};
 use std::u64;
 use sui::{
-    balance::{Self, Balance},
+    balance::,
     coin::{Self, Coin},
     dynamic_field,
     sui::SUI,
@@ -347,7 +347,7 @@ fun get_price_per_token_scaled<MemeCoin>(
 
 public fun place_dev_order(
     config: &mut MemeConfig,
-    name: u64,
+    temp_id: u64,
     mut sui_in: Coin<SUI>,
     token_amount: u64,
     ctx: &mut TxContext,
@@ -355,7 +355,7 @@ public fun place_dev_order(
     enforce_config_version(config);
     assert!(config.is_create_enabled, 9);
 
-    assert!(!dynamic_field::exists_(&config.id, name), 8);
+    assert!(!dynamic_field::exists_(&config.id, temp_id), 8);
 
     let amount_in = math::get_amount_in(
         token_amount,
@@ -384,7 +384,7 @@ public fun place_dev_order(
 
     delete_or_return(sui_in, tx_context::sender(ctx));
 
-    dynamic_field::add(&mut config.id, name, dev_order);
+    dynamic_field::add(&mut config.id, temp_id, dev_order);
 }
 
 public entry fun sell<MemeCoin>(
