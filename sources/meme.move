@@ -1,10 +1,15 @@
 module hop::meme;
 
-use hop::{connector, events, math};
+use hop::{
+    connector::Connector,
+    connector_v2::{Self, ConnectorV2},
+    events,
+    math
+};
 use std::u64;
 use sui::{
-    balance::,
-    coin::{Self, Coin},
+    balance::{Self, Balance},
+    coin::{Self, Coin, CoinMetadata},
     dynamic_field,
     sui::SUI,
     transfer::Receiving
@@ -44,6 +49,7 @@ public struct MigrateReceipt {
     curve_id: ID,
 }
 
+#[allow(lint(coin_field))]
 public struct DevOrder has store {
     buy_coin: Coin<SUI>,
     token_amount: u64,
@@ -70,20 +76,71 @@ fun init(_: MEME, ctx: &mut TxContext) {
     transfer::share_object(config);
 }
 
+// This function is deprecated. Use accept_connector_v2 instead.
+#[allow(unused_variable)]
 public fun accept_connector<MemeCoin>(
     config: &mut MemeConfig,
-    connector_receiving: Receiving<connector::Connector<MemeCoin>>,
+    connector_receiving: Receiving<Connector<MemeCoin>>,
+    ctx: &mut TxContext,
+) {
+    enforce_config_version(config);
+
+    // let connector = transfer::public_receive(
+    //     &mut config.id,
+    //     connector_receiving,
+    // );
+
+    // let creator = connector::get_creator(&connector);
+    // let temp_id = connector::get_temp_id(&connector);
+
+    // assert!(dynamic_field::exists_(&config.id, temp_id), 7);
+
+    // let DevOrder {
+    //     buy_coin,
+    //     token_amount,
+    // } = dynamic_field::remove(&mut config.id, temp_id);
+
+    // assert!(connector::get_supply(&connector) == 0, 6);
+    // assert!(connector::get_decimals(&connector) == 6, 3);
+
+    // let mut bonding_curve = create_bonding_curve(connector, config, ctx);
+
+    // if (coin::value(&buy_coin) > 0) {
+    //     let (sui_coin, token_coin) = buy_returns_internal(
+    //         &mut bonding_curve,
+    //         config,
+    //         buy_coin,
+    //         token_amount,
+    //         token_amount,
+    //         creator,
+    //         true,
+    //         ctx,
+    //     );
+
+    //     delete_or_return(sui_coin, creator);
+    //     transfer::public_transfer(token_coin, creator);
+    // } else {
+    //     coin::destroy_zero(buy_coin);
+    // };
+
+    // transfer::share_object(bonding_curve);
+}
+
+public fun accept_connector_v2<MemeCoin>(
+    config: &mut MemeConfig,
+    connector_v2_receiving: Receiving<ConnectorV2<MemeCoin>>,
+    metadata: &CoinMetadata<MemeCoin>,
     ctx: &mut TxContext,
 ) {
     enforce_config_version(config);
 
     let connector = transfer::public_receive(
         &mut config.id,
-        connector_receiving,
+        connector_v2_receiving,
     );
 
-    let creator = connector::get_creator(&connector);
-    let temp_id = connector::get_temp_id(&connector);
+    let creator = connector_v2::get_creator<MemeCoin>(&connector);
+    let temp_id = connector_v2::get_temp_id<MemeCoin>(&connector);
 
     assert!(dynamic_field::exists_(&config.id, temp_id), 7);
 
@@ -92,10 +149,12 @@ public fun accept_connector<MemeCoin>(
         token_amount,
     } = dynamic_field::remove(&mut config.id, temp_id);
 
-    assert!(connector::get_supply(&connector) == 0, 6);
-    assert!(connector::get_decimals(&connector) == 6, 3);
-
-    let mut bonding_curve = create_bonding_curve(connector, config, ctx);
+    let mut bonding_curve = create_bonding_curve_v2(
+        metadata,
+        connector,
+        config,
+        ctx,
+    );
 
     if (coin::value(&buy_coin) > 0) {
         let (sui_coin, token_coin) = buy_returns_internal(
@@ -263,34 +322,83 @@ public fun complete_migrate<MemeCoin>(
     events::emit_migrate<MemeCoin>(curve_id, to_pool_id);
 }
 
-fun create_bonding_curve<MemeCoin>(
-    connector: connector::Connector<MemeCoin>,
+// This function is deprecated. Use create_bonding_curve_v2 instead.
+// fun create_bonding_curve<MemeCoin>(
+//     connector: Connector<MemeCoin>,
+//     config: &MemeConfig,
+//     ctx: &mut TxContext,
+// ): BondingCurve<MemeCoin> {
+//     enforce_config_version(config);
+//     connector::get_creator(&connector);
+
+//     let (
+//         id,
+//         mut treasury_cap,
+//         metadata,
+//         creator,
+//         twitter,
+//         website,
+//         telegram,
+//     ) = connector::deconstruct(connector);
+
+//     object::delete(id);
+
+//     let bonding_curve = BondingCurve {
+//         id: object::new(ctx),
+//         sui_balance: balance::zero<SUI>(),
+//         virtual_sui_amount: config.virtual_sui_amount,
+//         token_balance: coin::mint_balance(
+//             &mut treasury_cap,
+//             1000000000000000,
+//         ),
+//         available_token_reserves: config.curve_supply,
+//         creator,
+//         curve_type: 0,
+//         status: 0,
+//     };
+
+//     events::emit_curve_create<MemeCoin>(
+//         get_id(&bonding_curve),
+//         creator,
+//         coin::get_name(&metadata),
+//         coin::get_symbol(&metadata),
+//         coin::get_description(&metadata),
+//         coin::get_icon_url(&metadata),
+//         twitter,
+//         website,
+//         telegram,
+//     );
+
+//     transfer::public_freeze_object(treasury_cap);
+//     transfer::public_freeze_object(metadata);
+
+//     bonding_curve
+// }
+
+fun create_bonding_curve_v2<MemeCoin>(
+    metadata: &CoinMetadata<MemeCoin>,
+    connector: ConnectorV2<MemeCoin>,
     config: &MemeConfig,
     ctx: &mut TxContext,
 ): BondingCurve<MemeCoin> {
     enforce_config_version(config);
-    connector::get_creator(&connector);
 
     let (
         id,
-        mut treasury_cap,
-        metadata,
-        creator,
+        supply,
         twitter,
         website,
         telegram,
-    ) = connector::deconstruct(connector);
+        creator,
+    ) = connector_v2::deconstruct(connector);
 
     object::delete(id);
 
-    let bonding_curve = BondingCurve {
+    let bonding_curve = BondingCurve<MemeCoin> {
         id: object::new(ctx),
         sui_balance: balance::zero<SUI>(),
         virtual_sui_amount: config.virtual_sui_amount,
-        token_balance: coin::mint_balance(
-            &mut treasury_cap,
-            1000000000000000,
-        ),
+        token_balance: supply,
         available_token_reserves: config.curve_supply,
         creator,
         curve_type: 0,
@@ -300,17 +408,14 @@ fun create_bonding_curve<MemeCoin>(
     events::emit_curve_create<MemeCoin>(
         get_id(&bonding_curve),
         creator,
-        coin::get_name(&metadata),
-        coin::get_symbol(&metadata),
-        coin::get_description(&metadata),
-        coin::get_icon_url(&metadata),
+        coin::get_name<MemeCoin>(metadata),
+        coin::get_symbol<MemeCoin>(metadata),
+        coin::get_description<MemeCoin>(metadata),
+        coin::get_icon_url<MemeCoin>(metadata),
         twitter,
         website,
         telegram,
     );
-
-    transfer::public_freeze_object(treasury_cap);
-    transfer::public_freeze_object(metadata);
 
     bonding_curve
 }

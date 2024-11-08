@@ -7,6 +7,10 @@ public struct ConnectorCreated<phantom MemeCoin> has copy, drop {
     connector_id: ID,
 }
 
+public struct ConnectorCreatedV2<phantom MemeCoin> has copy, drop {
+    connector_id: ID,
+}
+
 public struct BondingCurveCreated<phantom MemeCoin> has copy, drop {
     curve_id: ID,
     creator: address,
@@ -92,6 +96,12 @@ public(package) fun emit_complete<MemeCoin>(curve_id: ID) {
 
 public(package) fun emit_connector_create<MemeCoin>(connector_id: ID) {
     let event = ConnectorCreated<MemeCoin> { connector_id };
+
+    event::emit(event);
+}
+
+public(package) fun emit_connector_create_v2<MemeCoin>(connector_id: ID) {
+    let event = ConnectorCreatedV2<MemeCoin> { connector_id };
 
     event::emit(event);
 }
